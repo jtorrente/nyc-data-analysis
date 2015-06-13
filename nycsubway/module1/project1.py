@@ -1,16 +1,70 @@
-import datetime
+"""
+    Copyright Javier Torrente (contact@jtorrente.info), 2015.
 
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+    ************************************************************************
+
+    NOTE: I developed the program contained in this file 'project1.py' as
+    part of Udacity's nano-degree in data science. This file contains the
+    code for the first project that I submitted after module 1. The code
+    is publicly available in case it is useful, but if you happen to reuse
+    it in your own nanodegree projects, do not forget to indicate that -
+    otherwise it may be considered as cheating!
+
+    ************************************************************************
+
+    The source code in this file is entirely my own creation. However, source
+    code contained in other parts of this project may contain contributions
+    from Udacity's team. This is the case of module "problemsets", as in there
+    I've put all the code corresponding to problem sets 1-4 in the "Introduction
+    to Data Science" course. Udacity provides the code half completed - the
+    student (me in this case) is then instructed to complete it. Therefore
+    the code contained in problemsets cannot be considered my sole contribution.
+"""
 __author__ = 'jtorrente'
+
+import datetime
 import pandas
 import matplotlib.pyplot as plt
 import scipy
 import numpy as np
 from sklearn.linear_model import SGDRegressor
 from ggplot import *
+from nycsubway.module1.simple_log import SimpleLog
+
+#################################################################
+#                        HISTOGRAMS                             #
+#################################################################
 
 def entries_histogram(turnstile_weather, group_variable, label_if_0, label_if_1, color_if_0, color_if_1,
                       n_bins, max_range):
-
+    """
+    Plots an histogram, using matplotlib.pyplot, of the number of hourly entries from the 'turnstile_weather'
+    data set with two series:  one for rows where group_variable is 0, another one when group_variable is 1.
+    Data is normalized to account for the differences in sizes of the groups
+    :param turnstile_weather: The data set
+    :param group_variable: Dichotomic variable (values 0|1) used to determine series
+    :param label_if_0:  Label for the first series (group_variable == 0)
+    :param label_if_1:  Label for the second series (group_variable == 1)
+    :param color_if_0:  Color for the first series (group_variable == 0)
+    :param color_if_1:  Color for the second series (group_variable == 1)
+    :param n_bins:  Number of bins (columns) for each series
+    :param max_range:   Cut-off value of ENTRIESn_hourly (any value beyond this upper limit will not be
+                        rendered
+    :return: The plot
+    """
     # Labels for the chart
     x_label = "Number of entries per hour"
     y_label = "Frequency (Normed)"
@@ -37,9 +91,14 @@ def entries_histogram(turnstile_weather, group_variable, label_if_0, label_if_1,
     return plt
 
 def entries_histogram_rain(turnstile_weather):
+    """
+    Draws an histogram using variable rain to create the groups (see entries_histogram for more details)
+    :param turnstile_weather:  The data set
+    :return:    The plot
+    """
     # Number of columns in the histogram
     n_bins = 30
-    # Max range of the histogram (x-axis) => Trucated at this point
+    # Max range of the histogram (x-axis) => Truncated at this point
     max_range = 9000
 
     # Variable Taking values 1/0 used to make the groups
@@ -53,9 +112,14 @@ def entries_histogram_rain(turnstile_weather):
                              color_if_0, color_if_1, n_bins, max_range)
 
 def entries_histogram_fog(turnstile_weather):
+    """
+    Draws an histogram using variable fog to create the groups (see entries_histogram for more details)
+    :param turnstile_weather:  The data set
+    :return:    The plot
+    """
     # Number of columns in the histogram
     n_bins = 30
-    # Max range of the histogram (x-axis) => Trucated at this point
+    # Max range of the histogram (x-axis) => Truncated at this point
     max_range = 9000
 
     # Variable Taking values 1/0 used to make the groups
@@ -69,9 +133,14 @@ def entries_histogram_fog(turnstile_weather):
                              color_if_0, color_if_1, n_bins, max_range)
 
 def entries_histogram_weekday(turnstile_weather):
+    """
+    Draws an histogram using variable 'weekday' to create the groups (see entries_histogram for more details)
+    :param turnstile_weather:  The data set
+    :return:    The plot
+    """
     # Number of columns in the histogram
     n_bins = 30
-    # Max range of the histogram (x-axis) => Trucated at this point
+    # Max range of the histogram (x-axis) => Truncated at this point
     max_range = 9000
 
     # Variable Taking values 1/0 used to make the groups
@@ -84,7 +153,20 @@ def entries_histogram_weekday(turnstile_weather):
     return entries_histogram(turnstile_weather,group_variable, label_if_0, label_if_1,
                              color_if_0, color_if_1, n_bins, max_range)
 
+
+#################################################################
+#                       MANN-WHITNEY                            #
+#################################################################
+
 def rank_biserial_correlation(U, n1, n2):
+    """
+    Calculates the rank biserial correlation of a Mann-Whitney test,
+    To be used as an estimator of the effect size. 
+    :param U:
+    :param n1:
+    :param n2:
+    :return:
+    """
     return 1-(2*U)/(n1*n2)
 
 def mann_whitney_plus_means(turnstile_weather, group_variable):
@@ -185,74 +267,79 @@ def add_date_column_for_plotting(turnstile_weather):
 def plot_readership_by_date_weekday(turnstile_weather):
     plot = ggplot(turnstile_weather,
                   aes(y='ENTRIESn_hourly', x='date_number', color='weekday')) + \
-                  geom_point() + stat_smooth(colour='blue', span=0.2) + scale_x_date(labels=date_format("%Y-%m-%d"), breaks="1 day") + \
+                  geom_point() + stat_smooth(colour='blue', span=0.2) + \
+                  scale_x_date(labels=date_format("%Y-%m-%d"), breaks="1 day") + \
                   ggtitle('Ridership by date') + \
                   xlab('Date (Weekdays in blue, Week-ends in red)') + ylab('Ridership')
     return plot
 
-def plot_readership_by_date_hour(turnstile_weather):
-    plot = ggplot(turnstile_weather,
-                  aes(x='weekday', y='hour')) + \
-                  geom_boxplot() + \
-                  ggtitle('Ridership grouped by hour') + \
-                  xlab('Hour of day') + ylab('Ridership')
-    return plot
 
-
-def plot_weather_data2(turnstile_weather):
+def plot_meanprecepi_meantempi(turnstile_weather):
     plot = ggplot(turnstile_weather,
                   aes(x='meanprecipi', y='meantempi', color='ENTRIESn_hourly', size='ENTRIESn_hourly')) + \
-                  geom_point(position='jitter') + scale_color_gradient(low='#05D9F6', high='#5011D1') +\
-                  ggtitle('Ridership by date and precipitations') + \
+                  geom_point() + scale_color_gradient(low='#05D9F6', high='#5011D1') +\
+                  ggtitle('Ridership by mean precipitations and temperature') + \
                   xlab('Mean precipitations') + ylab('Mean temperature') + \
                   scale_x_continuous()
     return plot
 
 
 def analyse_weather_turnstile_data(datafile, show_plots):
+    simple_log = SimpleLog(7)
     #0 Read datafile and add ordinal date value for plotting
     turnstile_weather = pandas.read_csv(datafile)
     turnstile_weather = add_date_column_for_plotting(turnstile_weather)
-    print "-----------------------"
-    print "DATA FOR NOT RAINY DAYS"
-    print "-----------------------"
-    print turnstile_weather[turnstile_weather.rain==0]
-    print ""
-    print "-------------------"
-    print "DATA FOR RAINY DAYS"
-    print "-------------------"
-    print turnstile_weather[turnstile_weather.rain==1]
-    #1 Do exploratory analysis
+    simple_log.log_object(turnstile_weather[turnstile_weather.rain == 0],
+                          "DATA FOR NOT RAINY DAYS")
+    simple_log.log_object(turnstile_weather[turnstile_weather.rain == 1],
+                          "DATA FOR RAINY DAYS")
 
+    #1 Do exploratory analysis
+    simple_log.log("Printing three histograms that show\ndistribution of rain, fog and weekday\n"
+                   "Close all three pop up windows to continue.\n")
     if show_plots:
         plt = entries_histogram_rain(turnstile_weather)
         plt2 = entries_histogram_fog(turnstile_weather)
+        plt3 = entries_histogram_weekday(turnstile_weather)
         plt.show()
         plt2.show()
-        plt3 = entries_histogram_weekday(turnstile_weather)
         plt3.show()
 
-    # Mann-Whitney U tests
+    # 2) Mann-Whitney U tests
+    simple_log.log("Results from three Mann-Whitney U-tests\nto check if rain, fog and weekday have\n"
+                   "effect on ENTRIESn_hourly\n")
     mann_whitney_plus_means(turnstile_weather, 'rain')
     mann_whitney_plus_means(turnstile_weather, 'fog')
     mann_whitney_plus_means(turnstile_weather, 'weekday')
 
-    # Linear regression
+    # 3) Calculate correlations for predictors
     predictors = ['meanprecipi', 'meantempi', 'hour', 'weekday']
+    rho_meanprecipi, p_meanprecepi = scipy.stats.spearmanr(turnstile_weather['ENTRIESn_hourly'],
+                          turnstile_weather['meanprecipi'])
+    rho_meantempi, p_meantempi = scipy.stats.spearmanr(turnstile_weather['ENTRIESn_hourly'],
+                          turnstile_weather['meantempi'])
+    simple_log.log("Calculating Spearman's rho correlations between meanprecipi and meantempi and\n"
+                   "ENTRIESn_hourly respectively\n"
+                   "MEANPRECIPI => rho = "+str(rho_meanprecipi)+"    p = "+str(p_meanprecepi)+"\n"
+                   "MEANTEMPI => rho = "+str(rho_meantempi)+"    p = "+str(p_meantempi)+"\n")
+
+    # 4) Linear regression
     predictions = predictions_gradient_descent(turnstile_weather, predictors)
     r_squared = compute_r_squared(turnstile_weather['ENTRIESn_hourly'], predictions)
+    simple_log.log("Linear model calculated using gradient_descent\n"
+                   "If show_plots is true, the histogram of residuals will\n"
+                   "be shown\n."
+                   "Features used: "+str(predictors)+"\n"
+                   "R_SQUARED = " + str(r_squared)+"\n")
     if show_plots:
         plot_residuals(turnstile_weather, predictions).show()
-    print "-----------------------------------------------"
-    print "Linear model calculated using gradient_descent"
-    print "Features used: "+str(predictors)
-    print "R_SQUARED = " + str(r_squared)
-    print "-----------------------------------------------"
 
-    # Final plots
+    # 5) Final plots
     if show_plots:
+        simple_log.log("Two more plots will be shown if show_plots is true.\n"
+                       "The last one may take up to one minute to complete.\n")
         print plot_readership_by_date_weekday(turnstile_weather)
-        print plot_readership_by_date_hour(turnstile_weather)
-        print plot_weather_data2(turnstile_weather)
+        # The last figure can take up to one minute to calculate
+        print plot_meanprecepi_meantempi(turnstile_weather)
 
 analyse_weather_turnstile_data(r"../../data/turnstile_weather_v2.csv", True)

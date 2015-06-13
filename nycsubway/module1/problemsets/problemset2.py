@@ -1,3 +1,13 @@
+"""
+    Copyright Udacity team, Javier Torrente (contact@jtorrente.info), 2015.
+
+    The source code in this file corresponds to the second problem set in
+    Udacity's "Introduction to Data Science" course, part of their nanodegree
+    in data science. Udacity provides the code half completed - the
+    student (me in this case) is then instructed to fill the gaps. Therefore
+    the code contained in problemsets cannot be considered my sole contribution;
+    in fact most of the code is Udacity's contribution!
+"""
 __author__ = 'Udacity+jtorrente'
 
 import pandas
