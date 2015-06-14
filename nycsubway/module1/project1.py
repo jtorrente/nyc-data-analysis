@@ -1,5 +1,5 @@
 """
-    Copyright Javier Torrente (contact@jtorrente.info), 2015.
+    Copyright Javier Torrente (contact@jtorrente.info), and Udacity, 2015.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published
@@ -25,15 +25,17 @@
 
     ************************************************************************
 
-    The source code in this file is entirely my own creation. However, source
-    code contained in other parts of this project may contain contributions
-    from Udacity's team. This is the case of module "problemsets", as in there
-    I've put all the code corresponding to problem sets 1-4 in the "Introduction
-    to Data Science" course. Udacity provides the code half completed - the
+    The source code in this file is mostly my own creation, although some methods
+    (especially those used to calculate the linear regression model) were
+    provided by the Udacity team. Source code contained in other parts of this
+    project may also contain contributions from Udacity's team.
+    This is the case of module "problemsets", as in there I've put all the code
+    corresponding to problem sets 1-4 in the "Introduction to Data Science"
+    course. Udacity provides the code half completed - the
     student (me in this case) is then instructed to complete it. Therefore
     the code contained in problemsets cannot be considered my sole contribution.
 """
-__author__ = 'jtorrente'
+__author__ = 'jtorrente+Udacity'
 
 import datetime
 import pandas
@@ -160,16 +162,44 @@ def entries_histogram_weekday(turnstile_weather):
 
 def rank_biserial_correlation(U, n1, n2):
     """
-    Calculates the rank biserial correlation of a Mann-Whitney test,
-    To be used as an estimator of the effect size. 
-    :param U:
-    :param n1:
-    :param n2:
-    :return:
+    Calculates the rank-biserial correlation of a Mann-Whitney test,
+    using Wendt's formula r = 1-2*U/(n1*n2), to be used as an estimator of the effect size.
+    Interpretation guide:
+
+    r     |   Effect size   |
+    ------ -----------------
+    0.1      Small
+    0.3      Medium size
+    0.5      Large size
+
+    Links:
+    http://yatani.jp/teaching/doku.php?id=hcistats:mannwhitney
+    https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test#Rank-biserial_correlation
+
+    Reference:
+    "Wendt, H. W. (1972). Dealing with a common problem in Social science: A simplified
+    rank-biserial coefficient of correlation based on the U statistic. European Journal
+    of Social Psychology, 2(4), 463-465. http://doi.org/10.1002/ejsp.2420020412"
+
+    :param U: The statistic, as returned by mann_whitney_plus_means
+    :param n1: Number of samples in first group
+    :param n2:  Number of samples in second group
+    :return: A value between 0 and 1 (although it can be larger)
     """
     return 1-(2*U)/(n1*n2)
 
 def mann_whitney_plus_means(turnstile_weather, group_variable):
+    """
+    Runs a Mann-Whitney U test on the turnstile_weather data using ENTRIESn_hourly as dependant variable
+    and the group_variable provided as independent variable.
+    Results are also printed on screen.
+
+    :param turnstile_weather: The data set (data frame object). Must contain a column ENTRIESn_hourly
+                                and a column 'group_variable' with values 0,1
+    :param group_variable: The name of the independent variable
+    :return: The U statistic calculated
+             The p-value
+    """
     entries_with_condition = turnstile_weather[turnstile_weather[group_variable] == 1]['ENTRIESn_hourly']
     entries_without_condition = turnstile_weather[turnstile_weather[group_variable] == 0]['ENTRIESn_hourly']
     with_condition_mean = np.mean(entries_with_condition)
@@ -194,48 +224,30 @@ def mann_whitney_plus_means(turnstile_weather, group_variable):
 
     return with_condition_mean, without_condition_mean, U, p
 
-def plot_residuals(turnstile_weather, predictions):
-    plt.figure()
-    (turnstile_weather['ENTRIESn_hourly'] - predictions).hist()
-    return plt
+#################################################################
+#                     LINEAR REGRESSION                         #
+#################################################################
 
-def compute_r_squared(data, predictions):
-    SSR = np.sum((data-predictions)**2)
-    mean = np.mean(data)
-    SST = np.sum((data-mean)**2)
-    r_squared=1-SSR/SST
-    return r_squared
+def predictions_gradient_descent(turnstile_weather, predictors):
+    """
+    Estimates 'ENTRIESn_hourly' based on the predictors passed as argument,
+    using gradient descent linear regression.
 
-def normalize_features(features):
-    means = np.mean(features, axis=0)
-    std_devs = np.std(features, axis=0)
-    normalized_features = (features - means) / std_devs
-    return means, std_devs, normalized_features
-
-def recover_params(means, std_devs, norm_intercept, norm_params):
-    intercept = norm_intercept - np.sum(means * norm_params / std_devs)
-    params = norm_params / std_devs
-    return intercept, params
-
-def linear_regression_gradient_descent(features, values):
-    clf = SGDRegressor(n_iter=15)
-    results = clf.fit(features, values)
-    intercept = results.intercept_
-    params = results.coef_
-
-    return intercept, params
-
-def predictions_gradient_descent(dataframe, predictors):
-    # Select Features (try different features!)
-    # features = dataframe[['rain', 'precipi', 'hour', 'meantempi']]
-    features = dataframe[predictors]
-    #
+    This method is virtually the same used in problem set 3.
+    :param turnstile_weather: The data frame object containing 'ENTRIESn_hourly'
+                              and predictor variables
+    :param predictors: A list with the name of the variables to be used
+                       as predictors
+    :return: A list with the estimations of 'ENTRIESn_hourly'
+    """
+    # Features are selected from a list of predictors passed as argument
+    features = turnstile_weather[predictors]
     # Add UNIT to features using dummy variables
-    dummy_units = pandas.get_dummies(dataframe['UNIT'], prefix='unit')
+    dummy_units = pandas.get_dummies(turnstile_weather['UNIT'], prefix='unit')
     features = features.join(dummy_units)
 
     # Values
-    values = dataframe['ENTRIESn_hourly']
+    values = turnstile_weather['ENTRIESn_hourly']
 
     # Get the numpy arrays
     features_array = features.values
@@ -254,7 +266,93 @@ def predictions_gradient_descent(dataframe, predictors):
 
     return predictions
 
+
+def normalize_features(features):
+    """
+    Normalizes the given list of features by adjusting for the mean and
+    standard deviation as to produce a new list of normalized features
+    N(0,1)
+    :param features: Data-frame with the data to be normalized
+    :return:    Means of the features
+                Standard deviations of the features
+                A list with the normalized features
+    """
+    means = np.mean(features, axis=0)
+    std_devs = np.std(features, axis=0)
+    normalized_features = (features - means) / std_devs
+    return means, std_devs, normalized_features
+
+def linear_regression_gradient_descent(features, values):
+    """
+    Calculates linear regression on the given features with the given values
+    :param features: Array of numpy arrays with the features
+    :param values: The values used for the linear regression
+    :return:    The intercept
+                The etha parameters
+    """
+    clf = SGDRegressor(n_iter=15)
+    results = clf.fit(features, values)
+    intercept = results.intercept_
+    params = results.coef_
+
+    return intercept, params
+
+def recover_params(means, std_devs, norm_intercept, norm_params):
+    """
+    Undoes the normalization of normalize_features
+    :param means: Array or list with means of the features
+    :param std_devs: Array or list with the std. deviations of the features
+    :param norm_intercept: The normalized intercept of the linear regression
+    :param norm_params: Normalized parameters of the L.R.
+    :return:    De-normalized intercept
+                De-normalized parameters
+    """
+    intercept = norm_intercept - np.sum(means * norm_params / std_devs)
+    params = norm_params / std_devs
+    return intercept, params
+
+def compute_r_squared(data, predictions):
+    """
+    Calculates the R^2 as an estimation of the error introduced by
+    linear regression.
+
+    :param data: Array-like with the real values of a variable
+    :param predictions: Array-like with the estimated values of the variable
+                        as generated by the L.R. procedure
+    :return: The r^2 value, being a float number from 0 (0% accuracy)
+             to 1 (100% accuracy)
+    """
+    SSR = np.sum((data-predictions)**2)
+    mean = np.mean(data)
+    SST = np.sum((data-mean)**2)
+    r_squared = 1 - SSR / SST
+    return r_squared
+
+def plot_residuals(turnstile_weather, predictions):
+    """
+    Plots the error (residuals) introduced by the linear model
+    as an histogram using matplotlib.pyplot
+    :param turnstile_weather:   The data-frame containing the data
+    :param predictions: The array-like structure with the predictions
+    (values) generated
+    :return:    The plot generated
+    """
+    plt.figure()
+    (turnstile_weather['ENTRIESn_hourly'] - predictions).hist()
+    return plt
+
+#################################################################
+#                     ADDITIONAL PLOTS                          #
+#################################################################
+
 def add_date_column_for_plotting(turnstile_weather):
+    """
+    Adds a new column 'date_number' as a python date, calculated from column DATEn,
+    that is useful for exploiting ggplot's capabilities to display dates in charts
+    :param turnstile_weather: The data frame
+    :return: The new version of the data
+    """
+
     # turnstile_weather = turnstile_weather.loc[:1000,:]
     turnstile_weather.is_copy = False
     d = turnstile_weather.loc[:, 'DATEn']
@@ -265,6 +363,12 @@ def add_date_column_for_plotting(turnstile_weather):
     return turnstile_weather
 
 def plot_readership_by_date_weekday(turnstile_weather):
+    """
+    Plots a line chart showing in different colours ridership for each
+    date
+    :param turnstile_weather: The data
+    :return: The plot
+    """
     plot = ggplot(turnstile_weather,
                   aes(y='ENTRIESn_hourly', x='date_number', color='weekday')) + \
                   geom_point() + stat_smooth(colour='blue', span=0.2) + \
@@ -275,6 +379,12 @@ def plot_readership_by_date_weekday(turnstile_weather):
 
 
 def plot_meanprecepi_meantempi(turnstile_weather):
+    """
+    Plots a heat map chart showing how ridership changes (using intensity of colours to convey
+    information) depending on mean precipitations and temperature
+    :param turnstile_weather: The data
+    :return: The plot
+    """
     plot = ggplot(turnstile_weather,
                   aes(x='meanprecipi', y='meantempi', color='ENTRIESn_hourly', size='ENTRIESn_hourly')) + \
                   geom_point() + scale_color_gradient(low='#05D9F6', high='#5011D1') +\
@@ -283,6 +393,9 @@ def plot_meanprecepi_meantempi(turnstile_weather):
                   scale_x_continuous()
     return plot
 
+#################################################################
+#                           MAIN                                #
+#################################################################
 
 def analyse_weather_turnstile_data(datafile, show_plots):
     simple_log = SimpleLog(7)
