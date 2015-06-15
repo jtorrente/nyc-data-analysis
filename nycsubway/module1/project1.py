@@ -46,6 +46,30 @@ from sklearn.linear_model import SGDRegressor
 from ggplot import *
 from nycsubway.module1.simple_log import SimpleLog
 
+def data_cleanup(turnstile_weather, max_dif_entries_exits):
+    """
+    Makes a quick consistency check - for any given entry, the expected number of entries
+    should be more or less similar to the number of exits. This cleanup procedure will
+    calculate the difference between entries and exits and remove any elements where the
+    difference exceeds the given threshold
+    :param turnstile_weather: The data set (pandas data frame). Should have
+            'ENTRIESn_hourly' and 'EXITSn_hourly' columns
+    :param max_dif_entries_exits: The maximum tolerable difference between entries and
+            exits
+    :return: The number of rows deleted
+             A clean version of turnstile_weather
+    """
+    turnstile_weather['ENTRIES_EXITSn_hourly_dif'] = turnstile_weather['ENTRIESn_hourly'] - \
+                                                     turnstile_weather['EXITSn_hourly']
+
+    entries_to_remove = turnstile_weather[abs(turnstile_weather.ENTRIES_EXITSn_hourly_dif) >= max_dif_entries_exits]
+    nentries_to_remove = len(entries_to_remove)
+    print "  NO ENTRIES TO REMOVE = " + str(nentries_to_remove)
+    print "  MAX BEFORE CLEANUP = " + str(np.max(turnstile_weather['ENTRIESn_hourly']))
+    turnstile_weather = turnstile_weather[abs(turnstile_weather.ENTRIES_EXITSn_hourly_dif) < max_dif_entries_exits]
+    print " MAX AFTER CLEANUP = " + str(np.max(turnstile_weather['ENTRIESn_hourly']))
+    return nentries_to_remove, turnstile_weather
+
 #################################################################
 #                        HISTOGRAMS                             #
 #################################################################
@@ -204,6 +228,7 @@ def mann_whitney_plus_means(turnstile_weather, group_variable):
              The U statistic calculated
              The p-value
     """
+    # Calculate difference between hourly entries and exits
     entries_with_condition = turnstile_weather[turnstile_weather[group_variable] == 1]['ENTRIESn_hourly']
     entries_without_condition = turnstile_weather[turnstile_weather[group_variable] == 0]['ENTRIESn_hourly']
     with_condition_mean = np.mean(entries_with_condition)
@@ -247,6 +272,8 @@ def predictions_gradient_descent(turnstile_weather, predictors):
     :param predictors: A list with the name of the variables to be used
                        as predictors
     :return: A list with the estimations of 'ENTRIESn_hourly'
+             The value of the intercept for the linear model
+             The etha values of the linear model
     """
     # Features are selected from a list of predictors passed as argument
     features = turnstile_weather[predictors]
@@ -272,7 +299,7 @@ def predictions_gradient_descent(turnstile_weather, predictors):
     # The following line would be equivalent:
     # predictions = norm_intercept + np.dot(normalized_features_array, norm_params)
 
-    return predictions
+    return predictions, intercept, params
 
 
 def normalize_features(features):
@@ -370,6 +397,15 @@ def add_date_column_for_plotting(turnstile_weather):
     turnstile_weather['date_number'] = d
     return turnstile_weather
 
+def plot_histogram_ridership_by_rain(turnstile_weather):
+    plot = ggplot(turnstile_weather,
+                  aes(x='ENTRIESn_hourly', fill='rain', color='rain')) + \
+           geom_histogram(binwidth=100, alpha=0.6) +\
+           xlim(0, 7500) +\
+           ggtitle("ENTRIESn_hourly histogram (rainy days in blue, not rainy in red)") + \
+           xlab('ENTRIESn_hourly') + ylab('Frequency')
+    return plot
+
 def plot_readership_by_date_weekday(turnstile_weather):
     """
     Plots a line chart showing in different colours ridership for each
@@ -407,7 +443,7 @@ def plot_meanprecepi_meantempi(turnstile_weather):
 
 def analyse_weather_turnstile_data(datafile, show_plots):
     simple_log = SimpleLog(7)
-    #0 Read datafile and add ordinal date value for plotting
+    # 0 Read datafile, cleanup and preparation: Add ordinal date value for plotting
     turnstile_weather = pandas.read_csv(datafile)
     turnstile_weather = add_date_column_for_plotting(turnstile_weather)
     simple_log.log_object(turnstile_weather[turnstile_weather.rain == 0],
@@ -445,22 +481,29 @@ def analyse_weather_turnstile_data(datafile, show_plots):
                    "MEANTEMPI => rho = "+str(rho_meantempi)+"    p = "+str(p_meantempi)+"\n")
 
     # 4) Linear regression
-    predictions = predictions_gradient_descent(turnstile_weather, predictors)
+    predictions, intercept, ethas = predictions_gradient_descent(turnstile_weather, predictors)
     r_squared = compute_r_squared(turnstile_weather['ENTRIESn_hourly'], predictions)
     simple_log.log("Linear model calculated using gradient_descent\n"
                    "If show_plots is true, the histogram of residuals will\n"
                    "be shown\n."
                    "Features used: "+str(predictors)+"\n"
-                   "R_SQUARED = " + str(r_squared)+"\n")
+                   "R_SQUARED = " + str(r_squared)+"\n"
+                   "INTERCEPT = "+str(intercept)+"\n"
+                   "ETHAS = " + str(ethas)+"\n")
     if show_plots:
         plot_residuals(turnstile_weather, predictions).show()
 
     # 5) Final plots
     if show_plots:
-        simple_log.log("Two more plots will be shown if show_plots is true.\n"
+        simple_log.log("Three more plots will be shown if show_plots is true.\n"
                        "The last one may take up to one minute to complete.\n")
+        print plot_histogram_ridership_by_rain(turnstile_weather)
         print plot_readership_by_date_weekday(turnstile_weather)
         # The last figure can take up to one minute to calculate
         print plot_meanprecepi_meantempi(turnstile_weather)
+    else:
+        simple_log.log("Procedure complete.\n"
+                       "Run 'analyse_weather_turnstile_data' again with show_plots=True\n"
+                       "to get charts and plots.\n")
 
-analyse_weather_turnstile_data(r"../../data/turnstile_weather_v2.csv", True)
+analyse_weather_turnstile_data(r"../../data/turnstile_weather_v2.csv", False)
