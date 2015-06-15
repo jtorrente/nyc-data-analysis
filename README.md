@@ -11,6 +11,8 @@ This repository also contains the code used to complete problem sets 1-4 of the 
 References used for this project are described in the 'short questions' file. 
 The most relevant source for information and contents I have used is Udacity course materials. Most of the code needed to complete this project was provided by Udacity to help the student complete the different problems and exercises of the Intro to Data Science course. On top of that code base, I have produced new code and improved the existing one to complete the project. 
 
+Data files included in the data folder (https://github.com/jtorrente/nyc-data-analysis/tree/master/data) have been downloaded directly from the downloads section of the Udacity course. 
+
 Apart from Udacity’s materials, I have used additional sources to get deeper insight into Mann-Whitney’s U test, especially how effect sizes should be reported for this test. It is often argued that when reporting statistical analyses inference tests should be accompanied not only by the value of the statistic used (e.g. ‘t’ or ‘U’) and the p-value (probability of likelihood of the null hypothesis), but also by an estimator of the effect size. This has several benefits. First, it allows for discussing how important the relationship found between dependent and independent variable is. Second, it facilitates meta-review of research results in a particular topic. 
 
 In this regard, I have used the rank-biserial coefficient as an estimator of effect size. I have used the next three references about this topic:
