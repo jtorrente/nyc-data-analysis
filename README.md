@@ -21,3 +21,7 @@ http://yatani.jp/teaching/doku.php?id=hcistats:mannwhitney
 https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test#Rank-biserial_correlation
 
 Wendt, H. W. (1972). Dealing with a common problem in Social science: A simplified rank-biserial coefficient of correlation based on the U statistic. European Journal of Social Psychology, 2(4), 463-465. http://doi.org/10.1002/ejsp.2420020412
+
+I have also used ggplot's, numpy's and panda's online documentation to solve questions and fix problems that came along the way. I have also accessed some threads on stackoverflow, but no code was copied from any of these sources:
+http://stackoverflow.com/questions/22543776/python-ggplot-issues-plotting-8-stocks-and-legend-is-cutoff
+http://stackoverflow.com/questions/3606697/how-to-set-limits-for-axes-in-ggplot2-r-plots
