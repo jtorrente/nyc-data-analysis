@@ -197,15 +197,21 @@ def mann_whitney_plus_means(turnstile_weather, group_variable):
     :param turnstile_weather: The data set (data frame object). Must contain a column ENTRIESn_hourly
                                 and a column 'group_variable' with values 0,1
     :param group_variable: The name of the independent variable
-    :return: The U statistic calculated
+    :return: The mean of ENTRIESn_hourly for entries with the condition
+             The mean of ENTRIESn_hourly for entries without the condition
+             The standard deviation of ENTRIESn_hourly for entries with the condition
+             The standard deviation of ENTRIESn_hourly for entries without the condition
+             The U statistic calculated
              The p-value
     """
     entries_with_condition = turnstile_weather[turnstile_weather[group_variable] == 1]['ENTRIESn_hourly']
     entries_without_condition = turnstile_weather[turnstile_weather[group_variable] == 0]['ENTRIESn_hourly']
     with_condition_mean = np.mean(entries_with_condition)
     without_condition_mean = np.mean(entries_without_condition)
+    with_condition_sd = np.std(entries_with_condition)
+    without_condition_sd = np.std(entries_without_condition)
 
-    U,p = scipy.stats.mannwhitneyu(entries_with_condition,
+    U, p = scipy.stats.mannwhitneyu(entries_with_condition,
                                    entries_without_condition)
 
     # Calculate Rank-biserial correlation as an effect-size measure
@@ -216,13 +222,15 @@ def mann_whitney_plus_means(turnstile_weather, group_variable):
     print "Mann-Whitney U test results for condition: "+group_variable
     print "----------------------------------------------------------"
     print "  Mean with condition = "+str(with_condition_mean)
+    print "  SD with condition = "+str(with_condition_sd)
     print "  Mean without condition = "+str(without_condition_mean)
+    print "  SD without condition = "+str(without_condition_sd)
     print "  U statistic = "+str(U)
     print "  p-value = "+str(p)
     print "  Rank biserial correlation (effect size) = "+str(r)
     print "----------------------------------------------------------"
 
-    return with_condition_mean, without_condition_mean, U, p
+    return with_condition_mean, without_condition_mean, with_condition_sd, without_condition_sd, U, p
 
 #################################################################
 #                     LINEAR REGRESSION                         #
