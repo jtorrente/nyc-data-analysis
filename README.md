@@ -1,4 +1,4 @@
-This repository contains my first project for Udacity's Data Science Nanodegree (Module 1): https://www.udacity.com/course/data-analyst-nanodegree--nd002. That is, the project for module "Introduction to data science".
+This repository contains my first project for Udacity's Data Science Nanodegree (Module 1): https://www.udacity.com/course/data-analyst-nanodegree--nd002. That is, the project for module "Introduction to data science", titled "Analyzing the New York Subway Dataset".
 
 The answers to the 'short questions' can be found in the docs folder (https://github.com/jtorrente/nyc-data-analysis/tree/master/docs), along with an example of the output the program generates and large resolution version of the visualizations created.
 Direct link to short questions PDF file:
