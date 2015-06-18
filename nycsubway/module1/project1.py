@@ -35,12 +35,15 @@
     student (me in this case) is then instructed to complete it. Therefore
     the code contained in problemsets cannot be considered my sole contribution.
 """
+import pandasql
+
 __author__ = 'jtorrente+Udacity'
 
 import datetime
 import pandas
 import matplotlib.pyplot as plt
 import scipy
+import scipy.stats as stats
 import numpy as np
 from sklearn.linear_model import SGDRegressor
 from ggplot import *
@@ -238,6 +241,7 @@ def mann_whitney_plus_means(turnstile_weather, group_variable):
 
     U, p = scipy.stats.mannwhitneyu(entries_with_condition,
                                    entries_without_condition)
+    p *= 2
 
     # Calculate Rank-biserial correlation as an effect-size measure
     r = rank_biserial_correlation(U, len(entries_with_condition), len(entries_without_condition))
@@ -251,7 +255,7 @@ def mann_whitney_plus_means(turnstile_weather, group_variable):
     print "  Mean without condition = "+str(without_condition_mean)
     print "  SD without condition = "+str(without_condition_sd)
     print "  U statistic = "+str(U)
-    print "  p-value = "+str(p)
+    print "  Two-tail p-value = "+str(p)
     print "  Rank biserial correlation (effect size) = "+str(r)
     print "----------------------------------------------------------"
 
@@ -277,12 +281,16 @@ def predictions_gradient_descent(turnstile_weather, predictors):
     """
     # Features are selected from a list of predictors passed as argument
     features = turnstile_weather[predictors]
+    print "***********************************************************"
+    print "CORRELATIONS IN FEATURES - TO CHECK FOR MULTICOLINEARITY"
+    print "***********************************************************"
+    # Values
+    values = turnstile_weather['ENTRIESn_hourly']
+    features_and_values = features.join(values)
+    print features_and_values.corr()
     # Add UNIT to features using dummy variables
     dummy_units = pandas.get_dummies(turnstile_weather['UNIT'], prefix='unit')
     features = features.join(dummy_units)
-
-    # Values
-    values = turnstile_weather['ENTRIESn_hourly']
 
     # Get the numpy arrays
     features_array = features.values
@@ -327,6 +335,7 @@ def linear_regression_gradient_descent(features, values):
     """
     clf = SGDRegressor(n_iter=15)
     results = clf.fit(features, values)
+    print results
     intercept = results.intercept_
     params = results.coef_
 
@@ -363,18 +372,145 @@ def compute_r_squared(data, predictions):
     r_squared = 1 - SSR / SST
     return r_squared
 
-def plot_residuals(turnstile_weather, predictions):
+#################################################################
+#                         RESIDUALS                             #
+#################################################################
+
+def analyse_residuals(show_plots, turnstile_weather):
+    """
+    Analyses residuals through three plots
+    :param show_plots:
+    :param turnstile_weather:
+    :return:
+    """
+    if show_plots:
+        plot_residuals_histogram(turnstile_weather).show()
+        plot_residuals_probability_plot(turnstile_weather).show()
+        print plot_residuals_by_datapoint(turnstile_weather)
+
+    compare_large_small_residuals(turnstile_weather)
+
+    # Get problematic units and analyze them
+    #list_units_large_residuals(turnstile_weather, 5000, 20)
+    print_residuals_by_unit(turnstile_weather)
+
+    if show_plots:
+        plot = ggplot(turnstile_weather,
+                      aes(x='ENTRIES_EXITSn_hourly_dif', y='residuals')) + \
+                      geom_point() + ggtitle('Residuals compared to ENTRIES_EXITSn_hourly_dif')
+        print plot
+        plot_dif_entries_exits_by_datapoint(turnstile_weather)
+
+def compare_large_small_residuals(turnstile_weather):
+        large_residuals = turnstile_weather[abs(turnstile_weather.residuals) > 5000]
+        small_residuals = turnstile_weather[abs(turnstile_weather.residuals) <= 5000]
+        print "************************************************"
+        print "* DESCRIBING ENTRIES WITH LARGE RESIDUALS "
+        print "************************************************"
+        large_residuals.describe()
+        print "************************************************"
+        print "* DESCRIBING ENTRIES WITH SMALL RESIDUALS "
+        print "************************************************"
+        small_residuals.describe()
+
+def list_units_large_residuals(turnstile_weather, residual_threshold=5000, occurrence_threshold=10):
+    turnstile_weather['residual_type'] = turnstile_weather['residuals'].apply(lambda x: 1 if x>residual_threshold else 0)
+    counts_large_residuals = turnstile_weather[turnstile_weather.residual_type==1]['UNIT'].value_counts()
+    counts_large_residuals = counts_large_residuals[counts_large_residuals>occurrence_threshold]
+    units_large_residuals = counts_large_residuals.keys().tolist()
+    bad_predictions = turnstile_weather[~turnstile_weather.UNIT.isin(units_large_residuals)]
+    print "******************************************"
+    print "* DESCRIBING UNITS WITH LARGE RESIDUALS"
+    print "******************************************"
+    print bad_predictions.describe()
+
+def print_residuals_by_unit(turnstile_weather):
+    """
+    Prints the avg residuals for each unit
+    :param turnstile_weather: The data frame
+    """
+    grouped = turnstile_weather.groupby(turnstile_weather['UNIT'])
+    unit_residuals_means = pandas.DataFrame()
+    names = []
+    residual_means = []
+    for name, group in grouped:
+        names.append(name)
+        residual_means.append(np.mean(group['residuals']))
+    unit_residuals_means['unit'] = names
+    unit_residuals_means['mean_residuals'] = residual_means
+    print "*******************************************"
+    print " MEAN OF RESIDUALS FOR EACH UNIT "
+    print "*******************************************"
+    print unit_residuals_means
+
+
+def plot_residuals_histogram(turnstile_weather):
     """
     Plots the error (residuals) introduced by the linear model
     as an histogram using matplotlib.pyplot
-    :param turnstile_weather:   The data-frame containing the data
+    :param turnstile_weather:   The data-frame containing the data. Must contain a column 'residuals'
     :param predictions: The array-like structure with the predictions
     (values) generated
     :return:    The plot generated
     """
     plt.figure()
-    (turnstile_weather['ENTRIESn_hourly'] - predictions).hist()
+    turnstile_weather['residuals'].hist()
     return plt
+
+def plot_residuals_probability_plot(turnstile_weather):
+    """
+    Plots a probability plot of the residuals against the normal
+    :param turnstile_weather Must contain a column 'residuals'
+    """
+    plt.figure()
+    scipy.stats.probplot(turnstile_weather['residuals'], dist='norm', plot=plt)
+    return plt
+
+def plot_residuals_by_datapoint(turnstile_weather, min_limit=0, limit=50000):
+    """
+    Plots absolute value of residuals for all datapoints.
+    :param turnstile_weather: The dataframe, with a residuals column
+    :param min_limit: Index of first data entry to be shown
+    :param limit:  Index of last data entry
+    :return: The plot
+    """
+    data = pandas.DataFrame()
+    data['residuals'] = abs(turnstile_weather['residuals'])
+    index =[]
+    for i in range(0, len(data)):
+        index.append(i)
+    data['index'] = index
+    plot = ggplot(data,
+                  # y='ENTRIESn_hourly', x='date_number', color='weekday')
+                  aes(x='index', y='residuals')) + \
+                  geom_point() + ggtitle('All residuals (without sign)') + xlim(low=min_limit, high=limit) +\
+                  xlab('Different entries') + ylab('Residuals = |ENTRIESn_hourly-predictions|')
+
+    print plot
+
+
+def plot_dif_entries_exits_by_datapoint(turnstile_weather, min_limit=0, limit=50000):
+    """
+    Plots absolute value of difference between hourly entries and exits for all datapoints.
+    :param turnstile_weather: The dataframe, with a residuals column
+    :param min_limit: Index of first data entry to be shown
+    :param limit:  Index of last data entry
+    :return: The plot
+    """
+    data = pandas.DataFrame()
+    data['ENTRIES_EXITSn_hourly_dif'] = abs(turnstile_weather['ENTRIES_EXITSn_hourly_dif'])
+    index =[]
+    for i in range(0, len(data)):
+        index.append(i)
+    data['index'] = index
+    plot = ggplot(data,
+                  # y='ENTRIESn_hourly', x='date_number', color='weekday')
+                  aes(x='index', y='ENTRIES_EXITSn_hourly_dif')) + \
+                  geom_point() + ggtitle('Differences between hourly entries and exits (without sign)') + xlim(low=min_limit, high=limit) +\
+                  xlab('Different entries') + ylab('|ENTRIESn_hourly - EXITSn_hourly|')
+
+    print plot
+
 
 #################################################################
 #                     ADDITIONAL PLOTS                          #
@@ -398,13 +534,13 @@ def add_date_column_for_plotting(turnstile_weather):
     return turnstile_weather
 
 def plot_histogram_ridership_by_rain(turnstile_weather):
-    plot = ggplot(turnstile_weather,
+    p = ggplot(turnstile_weather,
                   aes(x='ENTRIESn_hourly', fill='rain', color='rain')) + \
            geom_histogram(binwidth=100, alpha=0.6) +\
            xlim(0, 7500) +\
            ggtitle("ENTRIESn_hourly histogram (rainy days in blue, not rainy in red)") + \
            xlab('ENTRIESn_hourly') + ylab('Frequency')
-    return plot
+    return p
 
 def plot_readership_by_date_weekday(turnstile_weather):
     """
@@ -413,14 +549,29 @@ def plot_readership_by_date_weekday(turnstile_weather):
     :param turnstile_weather: The data
     :return: The plot
     """
-    plot = ggplot(turnstile_weather,
-                  aes(y='ENTRIESn_hourly', x='date_number', color='weekday')) + \
-                  geom_point() + stat_smooth(colour='blue', span=0.2) + \
+    grouped = turnstile_weather.groupby('date_number')
+    data = pandas.DataFrame()
+    date_numbers = []
+    total_hourly_entries = []
+    weekdays = []
+    for date_number, group in grouped:
+        date_numbers.append(date_number)
+        total_hourly_entries.append(np.sum(group['ENTRIESn_hourly']))
+        weekday = group.iloc[0]['weekday']
+        weekdays.append(weekday)
+
+    data['date_number'] = date_numbers
+    data['total_hourly_entries'] = total_hourly_entries
+    data['weekday'] = weekdays
+    print data
+
+    p = ggplot(data,
+                  aes(y='total_hourly_entries', x='date_number', color='weekday')) + \
+                  geom_point() + geom_line() + \
                   scale_x_date(labels=date_format("%Y-%m-%d"), breaks="1 day") + \
                   ggtitle('Ridership by date') + \
-                  xlab('Date (Weekdays in blue, Week-ends in red)') + ylab('Ridership')
-    return plot
-
+                  xlab('Date (Weekdays in blue, Week-ends in red)') + ylab('Total number of entries in the day')
+    return p
 
 def plot_meanprecepi_meantempi(turnstile_weather):
     """
@@ -429,13 +580,13 @@ def plot_meanprecepi_meantempi(turnstile_weather):
     :param turnstile_weather: The data
     :return: The plot
     """
-    plot = ggplot(turnstile_weather,
-                  aes(x='meanprecipi', y='meantempi', color='ENTRIESn_hourly', size='ENTRIESn_hourly')) + \
+    p = ggplot(data=turnstile_weather,aesthetics=aes(x='meanprecipi', y='meantempi', color='ENTRIESn_hourly', size='ENTRIESn_hourly')) + \
                   geom_point() + scale_color_gradient(low='#05D9F6', high='#5011D1') +\
                   ggtitle('Ridership by mean precipitations and temperature') + \
                   xlab('Mean precipitations') + ylab('Mean temperature') + \
                   scale_x_continuous()
-    return plot
+
+    return p
 
 #################################################################
 #                           MAIN                                #
@@ -446,6 +597,8 @@ def analyse_weather_turnstile_data(datafile, show_plots):
     # 0 Read datafile, cleanup and preparation: Add ordinal date value for plotting
     turnstile_weather = pandas.read_csv(datafile)
     turnstile_weather = add_date_column_for_plotting(turnstile_weather)
+    turnstile_weather['ENTRIES_EXITSn_hourly_dif'] = turnstile_weather['ENTRIESn_hourly'] - \
+                                                     turnstile_weather['EXITSn_hourly']
     simple_log.log_object(turnstile_weather[turnstile_weather.rain == 0],
                           "DATA FOR NOT RAINY DAYS")
     simple_log.log_object(turnstile_weather[turnstile_weather.rain == 1],
@@ -469,6 +622,7 @@ def analyse_weather_turnstile_data(datafile, show_plots):
     mann_whitney_plus_means(turnstile_weather, 'fog')
     mann_whitney_plus_means(turnstile_weather, 'weekday')
 
+
     # 3) Calculate correlations for predictors
     predictors = ['meanprecipi', 'meantempi', 'hour', 'weekday']
     rho_meanprecipi, p_meanprecepi = scipy.stats.spearmanr(turnstile_weather['ENTRIESn_hourly'],
@@ -482,6 +636,7 @@ def analyse_weather_turnstile_data(datafile, show_plots):
 
     # 4) Linear regression
     predictions, intercept, ethas = predictions_gradient_descent(turnstile_weather, predictors)
+    turnstile_weather['residuals'] = turnstile_weather['ENTRIESn_hourly'] - predictions
     r_squared = compute_r_squared(turnstile_weather['ENTRIESn_hourly'], predictions)
     simple_log.log("Linear model calculated using gradient_descent\n"
                    "If show_plots is true, the histogram of residuals will\n"
@@ -490,8 +645,7 @@ def analyse_weather_turnstile_data(datafile, show_plots):
                    "R_SQUARED = " + str(r_squared)+"\n"
                    "INTERCEPT = "+str(intercept)+"\n"
                    "ETHAS = " + str(ethas)+"\n")
-    if show_plots:
-        plot_residuals(turnstile_weather, predictions).show()
+    analyse_residuals(show_plots, turnstile_weather)
 
     # 5) Final plots
     if show_plots:
@@ -500,10 +654,11 @@ def analyse_weather_turnstile_data(datafile, show_plots):
         print plot_histogram_ridership_by_rain(turnstile_weather)
         print plot_readership_by_date_weekday(turnstile_weather)
         # The last figure can take up to one minute to calculate
-        print plot_meanprecepi_meantempi(turnstile_weather)
+        # print plot_meanprecepi_meantempi(turnstile_weather)
     else:
         simple_log.log("Procedure complete.\n"
                        "Run 'analyse_weather_turnstile_data' again with show_plots=True\n"
                        "to get charts and plots.\n")
+
 
 analyse_weather_turnstile_data(r"../../data/turnstile_weather_v2.csv", False)
